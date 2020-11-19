@@ -30,6 +30,8 @@ Gem::Specification.new do |s|
 
   s.add_dependency('acts_as_hashable', '~>1.2')
   s.add_dependency('burner', '~>1.0')
+  s.add_dependency('fast_excel', '~>0.3')
+  s.add_dependency('roo', '~> 2.8')
 
   s.add_development_dependency('guard-rspec', '~>4.7')
   s.add_development_dependency('pry', '~>0')
