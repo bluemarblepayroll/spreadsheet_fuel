@@ -99,4 +99,60 @@ describe SpreadsheetFuel::Library::Serialize::Xlsx do
       end
     end
   end
+
+  describe 'README examples' do
+    specify 'Writing an Excel Spreadsheet' do
+      pipeline = {
+        jobs: [
+          {
+            name: 'load_patients',
+            type: 'b/value/static',
+            register: :patients,
+            value: [
+              %w[chart_number first_name last_name],
+              [123, 'Bozo', 'Clown'],
+              ['A456', nil, 'Rizzo'],
+              %w[Z789 Hops Bunny]
+            ]
+          },
+          {
+            name: 'load_notes',
+            type: 'b/value/static',
+            register: :notes,
+            value: [
+              %w[emp_number note_number contents],
+              ['A456', 1, 'Hello world!'],
+              [nil, 2, 'Hello, again!'],
+              ['Z789', 1, 'Something something…']
+            ]
+          },
+          {
+            name: 'write_workbook',
+            type: 'spreadsheet_fuel/serialize/xlsx',
+            register: :spreadsheet,
+            sheet_mappings: [
+              { sheet: 'Patients', register: :patients },
+              { sheet: 'Notes',    register: :notes }
+            ]
+          },
+        ],
+        steps: %w[load_patients load_notes write_workbook]
+      }
+
+      payload = Burner::Payload.new
+
+      Burner::Pipeline.make(pipeline).execute(output: output, payload: payload)
+
+      contents = payload['spreadsheet']
+
+      io     = StringIO.new(contents)
+      book   = Roo::Excelx.new(io)
+
+      actual_patients = book.sheet('Patients').to_a
+      expect(actual_patients).to eq(patient_rows)
+
+      actual_notes = book.sheet('Notes').to_a
+      expect(actual_notes).to eq(note_rows)
+    end
+  end
 end

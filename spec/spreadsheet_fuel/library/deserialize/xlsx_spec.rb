@@ -31,6 +31,24 @@ describe SpreadsheetFuel::Library::Deserialize::Xlsx do
     )
   end
 
+  let(:patients) do
+    [
+      %w[chart_number first_name last_name],
+      [123, 'Bozo', 'Clown'],
+      ['A456', nil, 'Rizzo'],
+      %w[Z789 Hops Bunny]
+    ]
+  end
+
+  let(:notes) do
+    [
+      %w[emp_number note_number contents],
+      ['A456', 1, 'Hello world!'],
+      [nil, 2, 'Hello, again!'],
+      ['Z789', 1, 'Something something…']
+    ]
+  end
+
   subject { described_class.make(config) }
 
   describe '#perform' do
@@ -51,23 +69,9 @@ describe SpreadsheetFuel::Library::Deserialize::Xlsx do
       end
 
       specify 'specified payload registers contains their sheets respective data' do
-        expected_patients = [
-          %w[chart_number first_name last_name],
-          [123, 'Bozo', 'Clown'],
-          ['A456', nil, 'Rizzo'],
-          %w[Z789 Hops Bunny]
-        ]
-
-        expected_notes = [
-          %w[emp_number note_number contents],
-          ['A456', 1, 'Hello world!'],
-          [nil, 2, 'Hello, again!'],
-          ['Z789', 1, 'Something something…']
-        ]
-
-        expect(payload[patients_register]).to eq(expected_patients)
-        expect(payload[notes_register]).to    eq(expected_notes)
-        expect(payload[register]).to          eq(expected_patients)
+        expect(payload[patients_register]).to eq(patients)
+        expect(payload[notes_register]).to    eq(notes)
+        expect(payload[register]).to          eq(patients)
       end
     end
 
@@ -89,15 +93,38 @@ describe SpreadsheetFuel::Library::Deserialize::Xlsx do
       specify 'payload register has data' do
         value = payload[register]
 
-        expected = [
-          %w[chart_number first_name last_name],
-          [123, 'Bozo', 'Clown'],
-          ['A456', nil, 'Rizzo'],
-          %w[Z789 Hops Bunny]
-        ]
-
-        expect(value).to eq(expected)
+        expect(value).to eq(patients)
       end
+    end
+  end
+
+  describe 'README examples' do
+    specify 'Reading an Excel Spreadsheet' do
+      pipeline = {
+        jobs: [
+          {
+            name: 'read',
+            type: 'b/io/read',
+            path: File.join('spec', 'fixtures', 'patients_and_notes.xlsx') # change as necessary
+          },
+          {
+            name: 'parse',
+            type: 'spreadsheet_fuel/deserialize/xlsx',
+            sheet_mappings: [
+              { sheet: 'Patients', register: 'patients' },
+              { sheet: 'Notes',    register: 'notes' }
+            ]
+          },
+        ],
+        steps: %w[read parse]
+      }
+
+      payload = Burner::Payload.new
+
+      Burner::Pipeline.make(pipeline).execute(output: output, payload: payload)
+
+      expect(payload[:patients]).to eq(patients)
+      expect(payload[:notes]).to    eq(notes)
     end
   end
 end
